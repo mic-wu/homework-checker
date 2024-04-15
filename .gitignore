@@ -1,0 +1,3 @@
+# ignore the testing directory
+testing/
+__pycache__/
