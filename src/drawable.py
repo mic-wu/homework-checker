@@ -32,7 +32,7 @@ class Port():
         self.direction = direction
 
 class TextField():
-    def __init__(self, id, rect, align, fmt):
+    def __init__(self, id, rect, align, fmt="{}"):
         self.id = id
         self.rect = rect
         self.align = align
@@ -136,7 +136,7 @@ class Component(Drawable):
 
     def getPrimaryField(self):
         if self.primaryField == "":
-            raise None
+            return ""
         return getattr(self, self.primaryField)
 
     def setPrimaryField(self, value):
@@ -160,9 +160,9 @@ class Component(Drawable):
     def set_r(self, r):
         self.r = r
 
-    def _drawTextFields(self, painter, textHovered=None):
+    def _drawTextFields(self, painter, is_ghost=False, textHovered=None):
         for textField in getForDir(self.r, self.textFields):
-            painter.setOpacity(0.5 if textField.id == textHovered else 1.0)
+            painter.setOpacity(0.5 if textField.id == textHovered else 0.3 if (is_ghost and textField.id != self.primaryField) else 1.0)
             painter.drawText(textField.rect.translated(self.pos), textField.align, textField.format.format(getattr(self, textField.id)))
 
 ###########################################################
@@ -178,8 +178,14 @@ class Resistor(Component):
         "vertical": QRect(-12, -42, 24, 84),
     }
     textFields = {
-        "horizontal": [TextField("resistance", QRect(-30, 12, 60, 20), Qt.AlignCenter, "{}Ω")],
-        "vertical": [TextField("resistance", QRect(15, -10, 60, 20), Qt.AlignLeft, "{}Ω")]
+        "horizontal": [
+            TextField("resistance", QRect(-30, 12, 60, 20), Qt.AlignCenter, "{}Ω"),
+            TextField("id", QRect(-30, -30, 60, 20), Qt.AlignCenter, "{}")
+        ],
+        "vertical": [
+            TextField("resistance", QRect(15, -2, 60, 20), Qt.AlignLeft, "{}Ω"),
+            TextField("id", QRect(15, -18, 60, 20), Qt.AlignLeft, "{}")
+            ]
     }
     primaryField = "resistance"
 
@@ -197,7 +203,7 @@ class Resistor(Component):
         points = [self.pos+QPoint(x,y) for x, y in offsets]
         painter.drawPolyline(points)
 
-        self._drawTextFields(painter, textHovered)
+        self._drawTextFields(painter, is_ghost, textHovered)
 
 ###########################################################
 
@@ -212,8 +218,14 @@ class Capacitor(Component):
         "vertical": QRect(-22, -42, 44, 84),
     }
     textFields = {
-        "horizontal": [TextField("capacitance", QRect(-30, 22, 60, 20), Qt.AlignCenter, "{}F")],
-        "vertical": [TextField("capacitance", QRect(24, -10, 60, 20), Qt.AlignLeft, "{}F")]
+        "horizontal": [
+            TextField("capacitance", QRect(-30, 22, 60, 20), Qt.AlignCenter, "{}F"),
+            TextField("id", QRect(-30, -40, 60, 20), Qt.AlignCenter, "{}")
+        ],
+        "vertical": [
+            TextField("capacitance", QRect(24, -2, 60, 20), Qt.AlignLeft, "{}F"),
+            TextField("id", QRect(24, -18, 60, 20), Qt.AlignLeft, "{}")
+        ]
     }
     primaryField = "capacitance"
 
@@ -232,7 +244,7 @@ class Capacitor(Component):
             points = [self.pos+QPoint(x,y) for x, y in line]
             painter.drawPolyline(points)
 
-        self._drawTextFields(painter, textHovered)
+        self._drawTextFields(painter, is_ghost, textHovered)
 
 ###########################################################
 
@@ -247,8 +259,14 @@ class VoltageSource(Component):
         "vertical": QRect(-22, -42, 44, 84),
     }
     textFields = {
-        "horizontal": [TextField("voltage", QRect(-30, 22, 60, 20), Qt.AlignCenter, "{}V")],
-        "vertical": [TextField("voltage", QRect(24, -10, 60, 20), Qt.AlignLeft, "{}V")]
+        "horizontal": [
+            TextField("voltage", QRect(-30, 22, 60, 20), Qt.AlignCenter, "{}V"),
+            TextField("id", QRect(-30, -40, 60, 20), Qt.AlignCenter, "{}")
+        ],
+        "vertical": [
+            TextField("voltage", QRect(24, -2, 60, 20), Qt.AlignLeft, "{}V"),
+            TextField("id", QRect(24, -18, 60, 20), Qt.AlignLeft, "{}")
+        ]
     }
     primaryField = "voltage"
 
@@ -273,10 +291,10 @@ class VoltageSource(Component):
             points = [self.pos+QPoint(x,y) for x, y in line]
             painter.drawPolyline(points)
 
-        self._drawTextFields(painter, textHovered)
+        self._drawTextFields(painter, is_ghost, textHovered)
 
 class Ground(Component):
-    symbol = "GND"
+    symbol = "G"
     ports = {
         "west": [Port("p1", QPoint(0,0), "east")],
         "north": [Port("p1", QPoint(0,0), "south")],
@@ -310,4 +328,4 @@ class Ground(Component):
             points = [self.pos+QPoint(x,y) for x, y in line]
             painter.drawPolyline(points)
 
-        self._drawTextFields(painter, textHovered)
+        self._drawTextFields(painter, is_ghost, textHovered)

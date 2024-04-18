@@ -39,7 +39,7 @@ class CircuitEditor(QWidget):
         self.items = [Resistor("R1", QPoint(0, 0), "west")]
         self.wires = []
 
-        self.toPlace = Resistor("ghost", QPoint(0, 0), "west")
+        self.toPlace = Resistor("R2", QPoint(0, 0), "west")
         self.ghostPos = QPointF(0, 0)
         self.toPlaceR = "west"
         self.lastTypingTime = 0
@@ -91,6 +91,15 @@ class CircuitEditor(QWidget):
 
         return old_grid_pos != self.mouse_grid_pos
 
+    def _nextComponentID(self, prefix):
+        idNum = 1
+        while True:
+            id = f"{prefix}{idNum}"
+            if not any(item.id == id for item in self.items):
+                break
+            idNum += 1
+        return id
+
     def _placeItem(self):
         snapped_pos = (self.mouse_pos) / 20 * 20
 
@@ -105,15 +114,9 @@ class CircuitEditor(QWidget):
         new_item.set_r(self.toPlaceR)
 
         # generate a unique id
-        idNum = 1
-        while True:
-            id = f"{self.toPlace.symbol}{idNum}"
-            if not any(item.id == id for item in self.items):
-                break
-            idNum += 1
-        new_item.id = id
 
         self.items.append(new_item)
+        self.toPlace.id = self._nextComponentID(self.toPlace.symbol)
         self.update()
 
     def _placeWire(self):
@@ -160,7 +163,6 @@ class CircuitEditor(QWidget):
     def _computeGhostWire(self, endPos):
         if self.wireStart is None:
             return
-        
         
         snapped_pos = endPos
 
@@ -290,6 +292,8 @@ class CircuitEditor(QWidget):
     def keyPressEvent(self, event):
         super().keyPressEvent(event)
 
+        shiftKey = (event.modifiers() & Qt.ShiftModifier) == Qt.ShiftModifier
+
         if event.isAutoRepeat():
             return
         
@@ -301,26 +305,26 @@ class CircuitEditor(QWidget):
                 self.selectionId = None
             else:
                 self.mode = "edit"
-        elif event.key() == Qt.Key.Key_R:
+        elif event.key() == Qt.Key.Key_R and not shiftKey:
             self.toPlaceR = nextDirection(self.toPlaceR)
-        elif event.key() == Qt.Key.Key_W:
+        elif event.key() == Qt.Key.Key_W and shiftKey:
             self.mode = "wire"
-        elif event.key() == Qt.Key.Key_R:
+        elif event.key() == Qt.Key.Key_R and shiftKey:
             # resistor
             self.mode = "place"
-            self.toPlace = Resistor("ghost", QPoint(0, 0), "west")
-        elif event.key() == Qt.Key.Key_C:
+            self.toPlace = Resistor(self._nextComponentID("R"), QPoint(0, 0), "west")
+        elif event.key() == Qt.Key.Key_C and shiftKey:
             # capacitor
             self.mode = "place"
-            self.toPlace = Capacitor("ghost", QPoint(0, 0), "west")
-        elif event.key() == Qt.Key.Key_V:
+            self.toPlace = Capacitor(self._nextComponentID("C"), QPoint(0, 0), "west")
+        elif event.key() == Qt.Key.Key_V and shiftKey:
             # voltage source
             self.mode = "place"
-            self.toPlace = VoltageSource("ghost", QPoint(0, 0), "west")
-        elif event.key() == Qt.Key.Key_G:
-            # voltage source
+            self.toPlace = VoltageSource(self._nextComponentID("V"), QPoint(0, 0), "west")
+        elif event.key() == Qt.Key.Key_G and shiftKey:
+            # ground
             self.mode = "place"
-            self.toPlace = Ground("ghost", QPoint(0, 0), "west")
+            self.toPlace = Ground(self._nextComponentID("G"), QPoint(0, 0), "west")
         elif event.key() == Qt.Key.Key_Backspace or event.key() == Qt.Key.Key_X:
             if self.selectionId is not None:
                 if self.selectionId.startswith("wire"):
@@ -334,7 +338,7 @@ class CircuitEditor(QWidget):
                 self.toPlace.setPrimaryField("")
         else:
             if self.mode == "place":
-                if "0123456789numkMG".find(event.text()) != -1:
+                if len(event.text()) == 1 and "0123456789numkMG".find(event.text()) != -1:
                     v = ""
                     if self._getNow() - self.lastTypingTime < 500:
                         v = self.toPlace.getPrimaryField()
@@ -359,12 +363,14 @@ class CircuitEditor(QWidget):
 
         # draw ghost
         if self.mode == "place":
-            self._drawGhost(painter)
+            dist = (self.ghostPos - self.mouse_grid_pos).manhattanLength()
+            if dist > 2 or not self._alreadyItemAt(self.mouse_grid_pos):
+                self._drawGhost(painter)
         elif self.mode == "wire":
             if self.wireStart is not None:
                 self._drawGhostWire(painter)
             Wire.drawWireCursor(painter, self.ghostPos)
-            
+        
 
         # draw wires
         for wire in self.wires:
