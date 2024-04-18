@@ -42,16 +42,21 @@ class CircuitEditor(QWidget):
         self.toPlace = Resistor("ghost", QPoint(0, 0), "west")
         self.ghostPos = QPointF(0, 0)
         self.toPlaceR = "west"
+        self.lastTypingTime = 0
 
         self.wireStart = None
+        self.movedWire = False
         self.ghostWires = []
 
         self.pan = QPoint(0, 0)
         self.zoom = 0.0
         self.zoomValue = 1.0
 
+    def _getNow(self):
+        return self.elapsedTimer.elapsed()
+
     def _animateTick(self):
-        now = self.elapsedTimer.elapsed()
+        now = self._getNow()
         dtMs = now - self.lastTime
         self.lastTime = now
 
@@ -80,11 +85,17 @@ class CircuitEditor(QWidget):
         else:
             self.hoveredItemId = self._hoveredItemId()
 
-        # return if the mouse has moved to a different grid position
+        if old_grid_pos != self.mouse_grid_pos:
+            if self.mode == "wire" and self.wireStart is not None:
+                self.movedWire = True
+
         return old_grid_pos != self.mouse_grid_pos
 
     def _placeItem(self):
         snapped_pos = (self.mouse_pos) / 20 * 20
+
+        # placing an item resets typing cooldown
+        self.lastTypingTime = 0
 
         if self._alreadyItemAt(snapped_pos):
             return
@@ -230,6 +241,7 @@ class CircuitEditor(QWidget):
                 elif self.mode == "wire":
                     if self.wireStart is None:
                         self.wireStart = self.mouse_grid_pos
+                        self.movedWire = False
                     else:
                         self._placeWire()
                 elif self.mode == "edit":
@@ -262,6 +274,11 @@ class CircuitEditor(QWidget):
 
     def mouseReleaseEvent(self, event: QMouseEvent):
         self.mouse_down = False
+
+        if self.mode == "wire" and self.wireStart is not None:
+            if self.movedWire:
+                self._placeWire()
+
         self.update()
 
     def wheelEvent(self,event):
@@ -286,21 +303,21 @@ class CircuitEditor(QWidget):
                 self.mode = "edit"
         elif event.key() == Qt.Key.Key_R:
             self.toPlaceR = nextDirection(self.toPlaceR)
-        elif event.key() == Qt.Key.Key_1:
+        elif event.key() == Qt.Key.Key_W:
             self.mode = "wire"
-        elif event.key() == Qt.Key.Key_2:
+        elif event.key() == Qt.Key.Key_R:
             # resistor
             self.mode = "place"
             self.toPlace = Resistor("ghost", QPoint(0, 0), "west")
-        elif event.key() == Qt.Key.Key_3:
+        elif event.key() == Qt.Key.Key_C:
             # capacitor
             self.mode = "place"
             self.toPlace = Capacitor("ghost", QPoint(0, 0), "west")
-        elif event.key() == Qt.Key.Key_4:
+        elif event.key() == Qt.Key.Key_V:
             # voltage source
             self.mode = "place"
             self.toPlace = VoltageSource("ghost", QPoint(0, 0), "west")
-        elif event.key() == Qt.Key.Key_5:
+        elif event.key() == Qt.Key.Key_G:
             # voltage source
             self.mode = "place"
             self.toPlace = Ground("ghost", QPoint(0, 0), "west")
@@ -311,6 +328,19 @@ class CircuitEditor(QWidget):
                 else:
                     self.items = [item for item in self.items if item.id != self.selectionId]
                 self.selectionId = None
+        
+        if event.key() == Qt.Key.Key_Backspace:
+            if self.mode == "place":
+                self.toPlace.setPrimaryField("")
+        else:
+            if self.mode == "place":
+                if "0123456789numkMG".find(event.text()) != -1:
+                    v = ""
+                    if self._getNow() - self.lastTypingTime < 500:
+                        v = self.toPlace.getPrimaryField()
+                    v += event.text()
+                    self.toPlace.setPrimaryField(v)
+                    self.lastTypingTime = self._getNow()
         
         self.update()
 
@@ -354,19 +384,6 @@ class CircuitEditor(QWidget):
 
             selected = item.id == self.selectionId
             item.draw(painter, is_hovered=hovered, is_selected=selected, textHovered=textHovered)
-
-        # DEBUG - draw ports
-        # painter.setPen(Qt.green)
-        # for port in self._allPorts():
-        #     painter.drawEllipse(port.pos, 4, 4)
-        #     if port.direction == "north":
-        #         painter.drawLine(port.pos, port.pos + QPoint(0, -10))
-        #     elif port.direction == "south":
-        #         painter.drawLine(port.pos, port.pos + QPoint(0, 10))
-        #     elif port.direction == "east":
-        #         painter.drawLine(port.pos, port.pos + QPoint(10, 0))
-        #     elif port.direction == "west":
-        #         painter.drawLine(port.pos, port.pos + QPoint(-10, 0))
 
         # draw UI stuff
         painter.resetTransform()

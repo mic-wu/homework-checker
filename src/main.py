@@ -1,10 +1,9 @@
 import sys
 from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout
+from PyQt5 import QtGui, QtCore
 
 from circuitEditor import CircuitEditor
 from sidebar import Sidebar
-
-
 
 class MyWindow(QWidget):
     def __init__(self):
@@ -18,10 +17,11 @@ class MyWindow(QWidget):
         # scuffed
         self.setObjectName("main")
         self.setGeometry(100, 100, 800, 600)
-        self.setStyleSheet("""
-                            #main { background-color: white; }
-                           """)
-                            # * { color: black; }
+        self.setStyleSheet("#main { background-color: white; }")
+
+        app_icon = QtGui.QIcon()
+        app_icon.addFile('../res/duck256.png', QtCore.QSize(256,256))
+        app.setWindowIcon(app_icon)
 
         # top level hbox
         layout = QHBoxLayout()

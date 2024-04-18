@@ -126,12 +126,23 @@ class Component(Drawable):
     textFields = {
         "all": []
     }
+    primaryField = ""
 
     def __init__(self, id, pos, r):
         super().__init__()
         self.pos = pos
         self.id = id
         self.r = r
+
+    def getPrimaryField(self):
+        if self.primaryField == "":
+            raise None
+        return getattr(self, self.primaryField)
+
+    def setPrimaryField(self, value):
+        if self.primaryField == "":
+            return
+        setattr(self, self.primaryField, value)
 
     def getPorts(self):
         return [Port(port.name, port.pos + self.pos, port.direction) for port in getForDir(self.r, self.ports)]
@@ -170,6 +181,7 @@ class Resistor(Component):
         "horizontal": [TextField("resistance", QRect(-30, 12, 60, 20), Qt.AlignCenter, "{}Ω")],
         "vertical": [TextField("resistance", QRect(15, -10, 60, 20), Qt.AlignLeft, "{}Ω")]
     }
+    primaryField = "resistance"
 
     def __init__(self, id, pos, r, resistance="1k"):
         super().__init__(id, pos, r)
@@ -203,6 +215,7 @@ class Capacitor(Component):
         "horizontal": [TextField("capacitance", QRect(-30, 22, 60, 20), Qt.AlignCenter, "{}F")],
         "vertical": [TextField("capacitance", QRect(24, -10, 60, 20), Qt.AlignLeft, "{}F")]
     }
+    primaryField = "capacitance"
 
     def __init__(self, id, pos, r, capacitance="1u"):
         super().__init__(id, pos, r)
@@ -237,6 +250,7 @@ class VoltageSource(Component):
         "horizontal": [TextField("voltage", QRect(-30, 22, 60, 20), Qt.AlignCenter, "{}V")],
         "vertical": [TextField("voltage", QRect(24, -10, 60, 20), Qt.AlignLeft, "{}V")]
     }
+    primaryField = "voltage"
 
     def __init__(self, id, pos, r, voltage="5"):
         super().__init__(id, pos, r)
